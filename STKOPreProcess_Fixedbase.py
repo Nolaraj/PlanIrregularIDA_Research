@@ -60,8 +60,8 @@ TrainsientAID = 13
 GMDefinition = 13
 
 # For Analyze Only the MainPathFile should contains folder containg Main.tcl file and Script had been properly written
-WriteScriptQ = True
-AnalyzeQ = False
+WriteScriptQ = False
+AnalyzeQ = True
 status_interval = 5
 MainPathFile = "FilePaths"
 
@@ -76,7 +76,7 @@ Recorder = doc.getAnalysisStep(RecorderID)
 TransientAnalysis = doc.getAnalysisStep(TrainsientAID)
 #GM = np.array([22, 23, 3, 3, 43, 4], dtype=float)
 EQ_space = doc.getDefinition(GMDefinition)
-ScaleFactors = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2]
+ScaleFactors = [0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.25, 1.5, 2, 3, 4]
 
 
 def ScriptWriter(EarthquakesDict):
@@ -271,7 +271,7 @@ def load_PEERNGA_record(filepath: str):
             if len(date_parts) < 3:
                 raise ValueError("Date format incorrect on Line 2. Expected MM/DD/YYYY.")
             year = date_parts[2]
-            eqname = (f"{year}_{line2[0].strip()}_{line2[2].strip()}_comp_{line2[3].strip()}")
+            eqname = (f"{line2[2].strip()}_comp_{line2[3].strip()}")
 
             next(fp)  # Skip header line 3
             line4 = next(fp).strip().split(',')
@@ -299,6 +299,17 @@ def load_PEERNGA_record(filepath: str):
 
 
 if __name__ == '__main__':
+    # Check if file exists, else create it
+    root_folder  = os.getcwd()
+    file_path = os.path.join(root_folder, "FilePaths.txt")
+    if not os.path.exists(file_path):
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("")  # create an empty file
+        print(f"File created: {file_path}")
+    else:
+        print(f"File already exists: {file_path}")
+
+    #Earthquakes Segregation
     root_folder = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\Grouped_By_Row_Metadata"
     scaled_files = []  # to store all file paths under each 'Scaled' folder
     
@@ -313,7 +324,7 @@ if __name__ == '__main__':
     # Print or use the collected paths
     print(f"Total Scaled files found: {len(scaled_files)}")
     EarthquakesDict = {}
-    for filename in scaled_files[0:5]:
+    for filename in scaled_files[0:1]:
         acc, dt, npts, eqname = load_PEERNGA_record(filename)
         if eqname not in EarthquakesDict:
             EarthquakesDict[eqname] = {}
