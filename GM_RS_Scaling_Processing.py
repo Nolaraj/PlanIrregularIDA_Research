@@ -673,9 +673,7 @@ def DataProcessing(earthquake_files):
             print(timeseries["accSeries"])
             print(accSeriesScaled)
 
-        # ii+=1
-        # if ii == 2:
-        #     break
+
 
         if tsConstInterval:
             timeseries = constIntTS(timeseries, intervals)
@@ -698,7 +696,9 @@ def DataProcessing(earthquake_files):
             print(timeseries["accSeries"])
             print(accSeriesScaled)
 
-
+        # ii+=1
+        # if ii == 2:
+        #     break
     #==============================================================Single Wave matching to the RS
         # accfile = SingleComp_Matching(source_seed, target_file)
 
@@ -786,7 +786,7 @@ def DataProcessing(earthquake_files):
         # You already have these lists:
         # EarthquakeNames, Resp_types, xis, TS_X, TS_Y, RS_X, RS_Y, Fr_X
 
-        save_path = r"C:\Users\Acer\Documents\Civil_Multipurpose Software\Earthquake_Data_Merged.xlsx"
+        save_path = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\Grouped_By_Row_Metadata\Earthquake_Data_Merged.xlsx"
 
         wb = Workbook()
         ws = wb.active
