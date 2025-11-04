@@ -19,7 +19,7 @@ if not App.hasCurrentSolver():
 solver_command = App.currentSolverCommand()
 
 # Available Names = [S, L1, L2, L3, L4, R]
-Building_Name = "L4UnS"
+Building_Name = "S"
 
 Soil_Parameters_Soft = {"Layer1": [1.83, 65352, 196056, 42, 0.35, 0, 100, 0.0],
                         "Layer2": [1.83, 69883, 209649, 42, 0.35, 0, 100, 0.0],
@@ -57,7 +57,7 @@ monitorTopID = 11
 monitorBottomID = 12
 RecorderID = 2
 TrainsientAID = 13
-GMDefinition = 13
+GMDefinition = 10
 
 # For Analyze Only the MainPathFile should contains folder containg Main.tcl file and Script had been properly written
 WriteScriptQ = False
@@ -86,7 +86,7 @@ def ScriptWriter(EarthquakesDict):
     for EqName, EqValues in EarthquakesDict.items():
         for soilIndex, soil in enumerate(Soils):
             SName = Soil_Name[soilIndex]
-            for ScaleFactor in ScaleFactors[15:16]:
+            for ScaleFactor in ScaleFactors: #[0:1]:
                 i = 0
                 for LName, Svalues in soil.items():
                         SoilPara = doc.getPhysicalProperty(SoilIDs[i])
@@ -169,7 +169,6 @@ def ScriptWriter(EarthquakesDict):
 
                 print(f"=============\033[1mFile No {fileIndex} has successfully been written==================\033[0m")
                 fileIndex += 1
-                break    
 
     # Writing the text file for future
     txtPath = os.path.join(os.getcwd(), f'{MainPathFile}.txt')
@@ -324,7 +323,7 @@ if __name__ == '__main__':
     # Print or use the collected paths
     print(f"Total Scaled files found: {len(scaled_files)}")
     EarthquakesDict = {}
-    for filename in scaled_files[0:1]:
+    for filename in scaled_files:#[0:1]:
         acc, dt, npts, eqname = load_PEERNGA_record(filename)
         if eqname not in EarthquakesDict:
             EarthquakesDict[eqname] = {}
@@ -333,6 +332,7 @@ if __name__ == '__main__':
         EarthquakesDict[eqname]["dt"]=dt
         EarthquakesDict[eqname]["npts"]=npts
         EarthquakesDict[eqname]["eqname"]=eqname
+    print(EarthquakesDict)
 
     
     
