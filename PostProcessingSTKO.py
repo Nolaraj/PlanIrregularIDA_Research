@@ -5,9 +5,10 @@ from PySide2.QtCore import Qt, QObject, Signal, Slot, QThread, QEventLoop
 from PySide2.QtWidgets import QDialog, QLabel, QProgressBar, QVBoxLayout, QApplication
 import os
 import math
+import shutil
+import subprocess
 
 use_dialog = True  # True = Dialog, False = Event Loop
-
 
 
 class QBlockingSlot(QObject):
@@ -74,10 +75,10 @@ class Worker(QObject):
 
         def ModelPara():
             if BaseCondition == "Fixed":
-                return  False
+                return False
 
             else:
-                return  True
+                return True
 
         BuildingName = ModelInfo[0]
         FolderPath = ModelInfo[1]
@@ -86,19 +87,21 @@ class Worker(QObject):
         BaseCondition = ModelInfo[4]
 
         SSI_Analysis = ModelPara()
-        #Diaphragm Drift = False computes the drift for each of the column and returns its maximum
+        print(BuildingName, FolderPath, ResultObj, Index, BaseCondition)
+        # Diaphragm Drift = False computes the drift for each of the column and returns its maximum
         DiaphragmDrift = False
         DiaphragmDisp = True
 
-
-
-
         # Function for Extraction of results, results processing and writing to teh file provided
         def ResultExt_Writer():
-
             all_times = []
             Drift_sp_target_i = []
             Drift_sp_target_j = []
+
+            node_CoOrds = {}
+            topFloorsDispTS_X = {}
+            topFloorsDispTS_Y = {}
+            topFloorsRotationTS_Z = {}
 
             all_driftsX = {}
             all_driftsY = {}
@@ -116,7 +119,6 @@ class Worker(QObject):
             Uz_Max_Node = []
             Uz_Min = []
             Uz_Min_Node = []
-
 
             def Extractor():
                 # # get document
@@ -149,7 +151,6 @@ class Worker(QObject):
                 opt = MpcOdbVirtualResultEvaluationOptions()
                 opt.stage = last_stage
 
-
                 # evaluate all results for each stage
                 num_steps = len(all_steps)
                 if num_steps == 0:
@@ -165,7 +166,6 @@ class Worker(QObject):
                     XGrids = {}
                     YGrids = {}
                     ColumnFloorwise = {}
-
 
                     # Diaphragm Nodes
                     def Node_Z_GT_0(node, node_id, Operation="Plus"):
@@ -208,7 +208,7 @@ class Worker(QObject):
                         return sorted_dict
 
                     def ValueFiltering(List, Tolerance):
-                        #If the values in the list are in the tolerance range then they are eliminated and only unique values are written
+                        # If the values in the list are in the tolerance range then they are eliminated and only unique values are written
                         filtered_values = []
                         for value in List:
                             is_unique = all(
@@ -328,7 +328,7 @@ class Worker(QObject):
                             Value = RemoveListDuplicates(value)
                             FloorNodes[key] = Value
 
-                        #Sorting for the dict based on the key values
+                        # Sorting for the dict based on the key values
                         NodesDict = DictSort(FloorNodes)
                         for key, value in NodesDict.items():
                             FloorNodes[key] = value
@@ -351,10 +351,7 @@ class Worker(QObject):
                             X_CoOrds = ValueFiltering(X_CoOrds, tolerance)
                             Y_CoOrds = ValueFiltering(Y_CoOrds, tolerance)
 
-
-
-
-                            #Inner Set Assigning
+                            # Inner Set Assigning
                             dynXGrid = {}
                             dynYGrid = {}
 
@@ -366,7 +363,6 @@ class Worker(QObject):
                                     if CheckTolerance(X_CoOrd, tolerance, xvalue):
                                         dynXGrid[X_CoOrd].append(node)
 
-
                             for Y_CoOrd in Y_CoOrds:
                                 dynYGrid[Y_CoOrd] = []
                                 for node in nodes:
@@ -374,13 +370,13 @@ class Worker(QObject):
                                     if CheckTolerance(Y_CoOrd, tolerance, yvalue):
                                         dynYGrid[Y_CoOrd].append(node)
 
-                            #Main set assignment
+                            # Main set assignment
                             XGrids[floor] = dynXGrid
                             YGrids[floor] = dynYGrid
 
                         for floor, Grids in XGrids.items():
                             for grid, nodes in Grids.items():
-                                print(f"Floor {floor}, Grid {grid}, nodes, {nodes}")
+                                print(f"Floor {floor}, Grid X={grid}m, nodes, {nodes}")
 
                     def ColFloorWise():
                         # Write to the set for element object floorwise
@@ -397,15 +393,14 @@ class Worker(QObject):
                                     midZ = (z1 + z2) / 2
                                     FloorCenter.append(midZ)
 
-                        #Initializing the bucket
+                        # Initializing the bucket
                         FloorCenter = ValueFiltering(FloorCenter, tolerance)
                         FloorCenter.sort()
 
                         for floor in FloorCenter:
                             ColumnFloorwise[floor] = []
 
-
-                        #Writing for the columns
+                        # Writing for the columns
                         for ele_id, ele in mesh.elements.items():
                             if len(ele.nodes) == 2:
                                 dx = ele.orientation.computeOrientation().col(0)
@@ -420,26 +415,11 @@ class Worker(QObject):
                                         if CheckTolerance(floor, tolerance, midZ):
                                             ColumnFloorwise[floor].append(ele)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                     DiaphragmNodes = DiaphragmNodesExt()
 
                     FloorNodesExt()
                     GridNodes()
                     ColFloorWise()
-
 
                     # Adding and cleaning to get the all super nodes
                     for value in DiaphragmNodes:
@@ -454,10 +434,6 @@ class Worker(QObject):
 
                     All_Nodes_Super = RemoveListDuplicates(All_Nodes_Super)
 
-
-
-
-
                     return DiaphragmNodes, FloorNodes, XGrids, YGrids, ColumnFloorwise
 
                 process_counter = 1
@@ -469,6 +445,7 @@ class Worker(QObject):
 
                     # get step id and time
                     step_id = all_steps[step_counter]
+
                     step_time = all_times[step_counter]
 
                     # write something...
@@ -486,13 +463,10 @@ class Worker(QObject):
                     reactionMoment_field = reactionMoment.evaluate(opt)
                     rotation_field = rotation.evaluate(opt)
 
-
-
                     if index == 0:
                         mesh = displacement_field.mesh
                         sortedDiaphragm, FloorNodes, XGrids, YGrids, ColumnFloorwise = IDs_Finder(mesh)
                         BaseNodes = FloorNodes[0]
-
 
                         # open the files for the recorders
 
@@ -512,7 +486,6 @@ class Worker(QObject):
                             all_dispX[i] = []
                             all_dispY[i] = []
 
-
                             Rotation_Z[i] = []
 
                         for floor in FloorNodes.keys():
@@ -527,8 +500,6 @@ class Worker(QObject):
                             TorsionalIrregularityRatio[floor] = []
 
                         process_counter += 1
-
-
 
                     # This is how you extract data from a nodal result at one or multiple nodes
                     # and compute the relative drift accessing the mesh data
@@ -566,15 +537,12 @@ class Worker(QObject):
                                 all_driftsX[node_counter + 1].append(driftx)
                                 all_driftsY[node_counter + 1].append(drifty)
 
-
-
-
                         if DiaphragmDrift != True:
                             keys_list = list(ColumnFloorwise.keys())
                             for index, floorCenter in enumerate(keys_list):
                                 Columns = ColumnFloorwise[floorCenter]
-                                ColumnDriftsX= []
-                                ColumnDriftsY= []
+                                ColumnDriftsX = []
+                                ColumnDriftsY = []
                                 for ele in Columns:
                                     i_node_id = ele.nodes[0].id
                                     j_node_id = ele.nodes[1].id
@@ -607,9 +575,6 @@ class Worker(QObject):
                                 all_driftsX[index + 1].append(max(ColumnDriftsX))
                                 all_driftsY[index + 1].append(max(ColumnDriftsY))
 
-
-
-
                     def DispComp(FloorNodes):
                         if DiaphragmDisp:
                             for node_counter in range(len(Drift_sp_target_i)):
@@ -622,8 +587,6 @@ class Worker(QObject):
                                 i_Ux = displacement_field[i_row, 0]
                                 j_Ux = displacement_field[j_row, 0]
 
-
-
                                 # Displacement Y
                                 i_Uy = displacement_field[i_row, 1]
                                 j_Uy = displacement_field[j_row, 1]
@@ -631,11 +594,9 @@ class Worker(QObject):
                                 all_dispX[node_counter].append(i_Ux)
                                 all_dispY[node_counter].append(i_Uy)
 
-
                                 if node_counter == len(Drift_sp_target_i) - 1:
                                     all_dispX[node_counter + 1].append(j_Ux)
                                     all_dispY[node_counter + 1].append(j_Uy)
-
 
                         if DiaphragmDisp == False:
                             keys_list = list(FloorNodes.keys())
@@ -661,13 +622,8 @@ class Worker(QObject):
                                 all_dispX[index].append(max(FloorDispX))
                                 all_dispY[index].append(max(FloorDispY))
 
-
-
-
-
                     DriftsComp(ColumnFloorwise)
                     DispComp(FloorNodes)
-
 
                     for node_counter in range(len(Drift_sp_target_i)):
                         i_node_id = Drift_sp_target_i[node_counter]
@@ -713,16 +669,13 @@ class Worker(QObject):
                         # all_dispX[node_counter].append(i_Ux)
                         # all_dispY[node_counter].append(i_Uy)
 
-
                         # Rotation_X[node_counter].append(i_Rx)
                         # Rotation_Y[node_counter].append(i_Ry)
                         Rotation_Z[node_counter].append(i_Rz)
 
-
                         if node_counter == len(Drift_sp_target_i) - 1:
                             # all_dispX[node_counter + 1].append(j_Ux)
                             # all_dispY[node_counter + 1].append(j_Uy)
-
 
                             # Rotation_X[node_counter + 1].append(j_Rx)
                             # Rotation_Y[node_counter + 1].append(j_Ry)
@@ -745,7 +698,7 @@ class Worker(QObject):
 
                         index = Floors.index(floor)
 
-                        #Node Based Results
+                        # Node Based Results
 
                         for node in Nodes:
                             # i_node_id = BaseNodes[node_counter]
@@ -766,6 +719,23 @@ class Worker(QObject):
                             i_Roy += rotation_field[i_row, 1]
                             i_Roz += rotation_field[i_row, 2]
 
+                            # CoOrdinates Extraction
+
+                            Node_Px = displacement_field.mesh.getNode(node).position.x
+                            Node_Py = displacement_field.mesh.getNode(node).position.y
+                            Node_Pz = displacement_field.mesh.getNode(node).position.z
+                            Node_CoOrds = "X_" + str(Node_Px) + " Y_" + str(Node_Py) + " Z_" + str(Node_Pz)
+                            node_CoOrds[node] = Node_CoOrds
+                            # Top Floors Displacement TH
+                            if Floors[-1] == floor:
+                                if node not in topFloorsDispTS_X:
+                                    topFloorsDispTS_X[node] = [Node_CoOrds]
+                                    topFloorsDispTS_Y[node] = [Node_CoOrds]
+                                    topFloorsRotationTS_Z[node] = [Node_CoOrds]
+                                topFloorsDispTS_X[node].append(displacement_field[i_row, 0])
+                                topFloorsDispTS_Y[node].append(displacement_field[i_row, 1])
+                                topFloorsRotationTS_Z[node].append(rotation_field[i_row, 2])
+
                             # Base Movements
                             if index == 0:
                                 if i_Uz_Max < displacement_field[i_row, 2]:
@@ -784,7 +754,7 @@ class Worker(QObject):
                                     i_Pz = displacement_field.mesh.getNode(node).position.z
                                     i_Uz_Min_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
 
-                        #Torsional Irregularity Specific Results
+                        # Torsional Irregularity Specific Results
                         # TORsional irregularity based on Displacement X
                         NodeDispX = []
                         XGridObj = XGrids[floor]
@@ -817,8 +787,7 @@ class Worker(QObject):
                             i_Ux += displacement_field[i_row, 0]
                             NodeDispX.append(abs(i_Ux))
 
-
-                        #Checks if all the values in the list are greater than a certain threshhold to extract for Torsional irregularity
+                        # Checks if all the values in the list are greater than a certain threshhold to extract for Torsional irregularity
                         Ratio1 = 1.0000
                         Ratio2 = 1.0000
                         Ratio = 1.0000
@@ -831,24 +800,16 @@ class Worker(QObject):
                             Ratio = max(Ratio1, Ratio2, Ratio3)
                             Ratio = Ratio1
 
-
-
-
-
-
-
-
                         # Record Keeper
                         BaseReactionX[floor].append(i_Rx)
                         BaseReactionY[floor].append(i_Ry)
                         BaseMomentX[floor].append(i_Mx)
                         BaseMomentY[floor].append(i_My)
 
-                        Rotation_X[floor].append(i_Rox/len(Nodes))
-                        Rotation_Y[floor].append(i_Roy/len(Nodes))
+                        Rotation_X[floor].append(i_Rox / len(Nodes))
+                        Rotation_Y[floor].append(i_Roy / len(Nodes))
 
                         TorsionalIrregularityRatio[floor].append(Ratio)
-
 
                         if index == 0:
                             Uz_Max.append(i_Uz_Max)
@@ -856,11 +817,12 @@ class Worker(QObject):
                             Uz_Min.append(i_Uz_Min)
                             Uz_Min_Node.append(i_Uz_Min_Node)
 
-                print(all_driftsX, all_driftsY)
+                # print(all_driftsX, all_driftsY)
+                print(BaseReactionX)
+
             Extractor()
 
-
-            DriftX =[]
+            DriftX = []
             DriftY = []
             DisplacementX = []
             DisplacementY = []
@@ -878,7 +840,7 @@ class Worker(QObject):
 
                 def AbsouluteList(Data):
                     if len(Data) == 0:
-                        return[0]
+                        return [0]
 
                     value = [abs(ele) for ele in Data]
                     return value
@@ -897,13 +859,12 @@ class Worker(QObject):
                 #     FirstPopper(all_RotZ)
 
                 # Maximum of the all time steps for each key, Provide set with key as diaphragm node and Value as list of TS value
-                def MaxTimeStep(OutList, DefinedSet, Displacement = False):
+                def MaxTimeStep(OutList, DefinedSet, Displacement=False):
                     MaxValue = []
                     if Displacement == False:
                         for key, value in DefinedSet.items():
                             MaxValue.append(max(AbsouluteList(value)))
                         # return MaxValue
-
 
                     if Displacement == True:
                         RefDispX = DefinedSet[0]
@@ -921,12 +882,11 @@ class Worker(QObject):
                         for value in MaxValue:
                             OutList.append(value)
 
-
                 # All data max value provider
                 MaxTimeStep(DriftX, all_driftsX)
                 MaxTimeStep(DriftY, all_driftsY)
-                MaxTimeStep(DisplacementX, all_dispX, Displacement = True)
-                MaxTimeStep(DisplacementY, all_dispY, Displacement = True)
+                MaxTimeStep(DisplacementX, all_dispX, Displacement=True)
+                MaxTimeStep(DisplacementY, all_dispY, Displacement=True)
                 # MaxTimeStep(RotationZ, all_RotZ)
                 MaxTimeStep(ReactionX, BaseReactionX)
                 MaxTimeStep(ReactionY, BaseReactionY)
@@ -936,7 +896,6 @@ class Worker(QObject):
                 MaxTimeStep(RotationY, Rotation_Y)
                 MaxTimeStep(RotationZ, Rotation_Z)
                 MaxTimeStep(TorsionalIR, TorsionalIrregularityRatio)
-
 
                 # DriftX = []
                 # for key, value in all_driftsX.items():
@@ -970,12 +929,9 @@ class Worker(QObject):
                 Max_Uplift_index = Uz_Max.index(Max_Uplift)
                 Max_Uplift_Point = Uz_Max_Node[Max_Uplift_index]
 
-
-
                 Max_Settlement = min(Uz_Min)
                 Max_Settlement_index = Uz_Min.index(Max_Settlement)
                 Max_Settlement_Point = Uz_Min_Node[Max_Settlement_index]
-
 
                 # Base Shear and Its Pseudo time
                 Floors = list(BaseReactionX.keys())
@@ -987,14 +943,11 @@ class Worker(QObject):
 
                 MaxBS_PseudoTime = all_times[index]
 
+                return Max_Uplift, Max_Uplift_Point, Max_Settlement, Max_Settlement_Point, MaxBS_PseudoTime
 
+            Max_Uplift, Max_Uplift_Point, Max_Settlement, Max_Settlement_Point, MaxBS_PseudoTime = Processor()
 
-                return Max_Uplift,Max_Uplift_Point,Max_Settlement ,Max_Settlement_Point,MaxBS_PseudoTime
-
-            Max_Uplift,Max_Uplift_Point,Max_Settlement ,Max_Settlement_Point,MaxBS_PseudoTime = Processor()
-
-
-            #Writing starts from here
+            # Writing starts from here
             def Writer():
                 # def AvgValue(MovList, RefValue, DataList):
                 #     RefValue = abs(RefValue)
@@ -1089,7 +1042,6 @@ class Worker(QObject):
                         Items.append(str(Max_Settlement_Point))
                         Items.append(str(MaxBS_PseudoTime))
 
-
                     print("All items cretaeed")
 
                     ResultObj.write('\t'.join(Items))
@@ -1097,6 +1049,113 @@ class Worker(QObject):
                 ResultObj.close()
 
             Writer()
+
+            def TS_writer():
+
+                TSPairs = {"DiaphragmDisplacements": [all_dispX, all_dispY],
+                           "DiaphragmRotationsZ": [Rotation_Z],
+                           "DiaphragmRotationsX": [Rotation_X],
+                           "DiaphragmRotationsY": [Rotation_Y],
+                           "DiaphragmReactionX": [BaseReactionX],
+                           "DiaphragmReactionY": [BaseReactionY],
+                           "DiaphragmDrifts": [all_driftsX, all_driftsY],
+                           "RoofNodesTS_DispX": [topFloorsDispTS_X],
+                           "RoofNodesTS_DispY": [topFloorsDispTS_Y],
+                           "RoofNodesTS_RotZ": [topFloorsRotationTS_Z],
+                           "TorsionalIR_TS": [TorsionalIrregularityRatio],
+                           "DiaphragmMomentX": [BaseMomentX],
+                           "DiaphragmMomentY": [BaseMomentY],
+                           }
+                TSPairsString = {
+                    "DiaphragmDisplacements": ["all_dispX", "all_dispY"],
+                    "DiaphragmRotationsZ": ["Rotation_Z"],
+                    "DiaphragmRotationsX": ["Rotation_X"],
+                    "DiaphragmRotationsY": ["Rotation_Y"],
+                    "DiaphragmReactionX": ["BaseReactionX"],
+                    "DiaphragmReactionY": ["BaseReactionY"],
+                    "DiaphragmDrifts": ["all_driftsX", "all_driftsY"],
+                    "RoofNodesTS_DispX": ["topFloorsDispTS_X"],
+                    "RoofNodesTS_DispY": ["topFloorsDispTS_Y"],
+                    "RoofNodesTS_RotZ": ["topFloorsRotationTS_Z"],
+                    "TorsionalIR_TS": ["TorsionalIrregularityRatio"],
+                    "DiaphragmMomentX": ["BaseMomentX"],
+                    "DiaphragmMomentY": ["BaseMomentY"],
+                }
+
+                NodalTS = ["RoofNodesTS_DispX", "RoofNodesTS_DispY", "RoofNodesTS_RotZ"]
+                FloorTS = ["DiaphragmDisplacements"
+                           "DiaphragmRotationsZ",
+                           "DiaphragmRotationsX",
+                           "DiaphragmRotationsY",
+                           "DiaphragmReactionX",
+                           "DiaphragmReactionY",
+                           "DiaphragmDrifts",
+                           "TorsionalIR_TS",
+                           "DiaphragmMomentX",
+                           "DiaphragmMomentY"
+                           ]
+
+                for head, ResultObj in TS_Files.items():
+                    if head not in list(TSPairs.keys()):
+                        continue  # Skip unknown headers
+
+                    data_lists = TSPairs[head]  # list of arrays/lists
+                    n_cols = len(data_lists[0])
+
+                    # ---- Write Header ----
+                    headers = ["Time(s)"]
+                    if head in NodalTS:
+                        # Get ith element from each list in data_lists
+                        for datalist in data_lists:
+                            for floor, TSValues in datalist.items():
+                                if 0 < len(TSValues):  # Ensure index exists
+                                    headers.append(str(TSValues[0]))
+                                else:
+                                    headers.append("")  # Or some default value (e.g., None, 0, etc.)
+
+                    else:
+                        data_listsStrings = TSPairsString[head]
+                        for index, TitleString in enumerate(data_listsStrings):
+                            headers += [f"Floor_{i + 1}_{TitleString}" for i in range(n_cols)]
+
+
+                    ResultObj.write('\t'.join(headers) + '\n')
+
+                    # ---- Write Time-series Data ----
+                    for i, t in enumerate(all_times):
+                        # Start row with time value
+                        row = [f"{t:.6f}"]
+
+                        # Get ith element from each list in data_lists
+                        for datalist in data_lists:
+                            for floor, TSValues in datalist.items():
+                                if i < len(TSValues):  # Ensure index exists
+                                    if  head in NodalTS:
+                                        try:
+                                            row.append(str(TSValues[i+1]))
+                                        except:
+                                            pass
+                                    else:
+                                        row.append(str(TSValues[i]))
+                                else:
+                                    row.append("")  # Or some default value (e.g., None, 0, etc.)
+
+
+
+                        ResultObj.write('\t'.join(row) + '\n')
+                    ResultObj.close()
+
+                    # TSFilenames = ["TimeSeries", all_times(list), "DiaphragmDisplacements", all_dispX, all_dispY,
+                    #                "DiaphragmRotationsZ", Rotation_Z,
+                    #                "BaseShear", BaseReactionX, BaseReactionY, "DiaphragmDrifts", all_driftsX, all_driftsY,
+                    #                "RoofNodesTS_DispX", topFloorsDispTS_X, "RoofNodesTS_DispY", topFloorsDispTS_Y,
+                    #                "RoofNodesTS_RotZ", topFloorsRotationTS_Z,
+                    #                "TorsionalIR_TS", TorsionalIrregularityRatio,
+                    #                "BaseMoments", BaseMomentX, BaseMomentY,
+                    #                "BaseRotations", Rotation_X, Rotation_Y]
+
+            TS_writer()
+            print(TS_Files)
 
         ResultExt_Writer()
 
@@ -1124,6 +1183,7 @@ Drift_sp_file.close()
 
 ResultObjects = []
 Paths = []
+TS_Files = {}
 for index, line in enumerate(lines):
     path = line.strip()
 
@@ -1135,6 +1195,33 @@ for index, line in enumerate(lines):
     Paths.append(path)
     ResultObjects.append(ResultObj)
 
+    ###Appending for the .txt files to store Time Series values
+    basedir = os.path.join(path, "TS_Outputs")
+    if os.path.exists(basedir):
+        # shutil.rmtree(basedir, onerror=on_rm_error)
+        subprocess.run(f'rmdir /s /q "{basedir}"', shell=True)
+
+    os.makedirs(basedir, exist_ok=True)
+
+    TSFilenames = ["DiaphragmDisplacements",  # ,
+    "DiaphragmRotationsZ",
+    "DiaphragmRotationsX",
+    "DiaphragmRotationsY",
+    "DiaphragmReactionX",
+    "DiaphragmReactionY",
+    "DiaphragmDrifts",
+    "RoofNodesTS_DispX",
+    "RoofNodesTS_DispY",
+    "RoofNodesTS_RotZ",
+    "TorsionalIR_TS",
+    "DiaphragmMomentX",
+    "DiaphragmMomentY"
+    ]
+    for name in TSFilenames:
+        filename = f"{name}.txt"
+        FilePath = os.path.join(basedir, filename)
+        ResultObj = open(FilePath, 'w+')
+        TS_Files[name] = ResultObj
 
 for index, line in enumerate(Paths):
     path = line.strip()
@@ -1143,16 +1230,14 @@ for index, line in enumerate(Paths):
     unicode_path = path.encode('utf-8')
     items = os.listdir(unicode_path)
 
-
     for file in items:
         fileExt = file.decode()[-5:]
         if fileExt == '.mpco':
             RecordPath = os.path.join(unicode_path, file)
             App.runCommand("OpenDatabase", RecordPath)
             break
-
+    print("sdfsd", ResultObjects[index])
     ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index, BaseCondition]
-
     thread = QThread()
     worker = Worker()
     worker.moveToThread(thread)
@@ -1182,9 +1267,7 @@ for index, line in enumerate(Paths):
     else:
         loop.exec_()
 
-
     print(f"Well Executed for Index No {index}")
-
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
 
