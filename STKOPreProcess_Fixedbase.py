@@ -1,4 +1,3 @@
-
 from PyMpc import *
 from PyMpc.MPC_INTERNALS import run_solver
 from opensees.mpc_solver_write_input import write_tcl
@@ -18,8 +17,16 @@ if not App.hasCurrentSolver():
     raise Exception("No solver defined")
 solver_command = App.currentSolverCommand()
 
+# For Analyze Only the MainPathFile should contains folder containg Main.tcl file and Script had been properly written
+WriteScriptQ = True
+AnalyzeQ = False
+status_interval = 5
+MainPathFile = "FilePathsSoil"
 # Available Names = [S, L1, L2, L3, L4, R]
-Building_Name = "S"
+Building_Name = "L1"
+ScaleFactors = [0.05]#, 0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.25, 1.5, 2, 3, 4]
+fixedBase  = False
+
 
 Soil_Parameters_Soft = {"Layer1": [1.83, 65352, 196056, 42, 0.35, 0, 100, 0.0],
                         "Layer2": [1.83, 69883, 209649, 42, 0.35, 0, 100, 0.0],
@@ -34,13 +41,19 @@ Soil_Parameters_Medium = {"Layer1": [1.79, 55195, 165586, 38, 0.35, 0, 100, 0.0]
 Soil_Parameters_Hard = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0],
                         "Layer2": [1.97, 152818, 458456, 17, 0.35, 32, 100, 0.0],
                         "Layer3": [1.92, 188263, 564790, 100, 0.35, 32, 100, 0.0]}
-                        
-Fixed = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0],
-                        "Layer2": [1.97, 152818, 458456, 17, 0.35, 32, 100, 0.0],
-                        "Layer3": [1.92, 188263, 564790, 100, 0.35, 32, 100, 0.0]}
 
-Soil_Name = ["Fixed", "Soft", "Medium", "Hard"]
-Soils = [Fixed]#, Soil_Parameters_Soft, Soil_Parameters_Medium, Soil_Parameters_Hard]
+Fixed = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0],
+         "Layer2": [1.97, 152818, 458456, 17, 0.35, 32, 100, 0.0],
+         "Layer3": [1.92, 188263, 564790, 100, 0.35, 32, 100, 0.0]}
+
+if fixedBase:
+	Soils = [Fixed]
+	Soil_Name = ["Fixed"]
+
+else:
+	Soils = [Soil_Parameters_Soft, Soil_Parameters_Medium, Soil_Parameters_Hard]
+	Soil_Name = ["Soft", "Medium", "Hard"]
+
 
 Earthquake_Parameters = {"Gorkha": [10, 1900, 9.5]}  # ,
 # "Northridge": [12, 1500, 15],
@@ -59,11 +72,8 @@ RecorderID = 2
 TrainsientAID = 13
 GMDefinition = 10
 
-# For Analyze Only the MainPathFile should contains folder containg Main.tcl file and Script had been properly written
-WriteScriptQ = False
-AnalyzeQ = True
-status_interval = 5
-MainPathFile = "FilePaths"
+
+
 
 # SoilPara = doc.getPhysicalProperty(Soil1ID)
 # SoilPara = doc.getPhysicalProperty(Soil2ID)
@@ -74,9 +84,8 @@ monitorTop = doc.getAnalysisStep(monitorTopID)
 monitorBottom = doc.getAnalysisStep(monitorBottomID)
 Recorder = doc.getAnalysisStep(RecorderID)
 TransientAnalysis = doc.getAnalysisStep(TrainsientAID)
-#GM = np.array([22, 23, 3, 3, 43, 4], dtype=float)
+# GM = np.array([22, 23, 3, 3, 43, 4], dtype=float)
 EQ_space = doc.getDefinition(GMDefinition)
-ScaleFactors = [0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.25, 1.5, 2, 3, 4]
 
 
 def ScriptWriter(EarthquakesDict):
@@ -86,31 +95,31 @@ def ScriptWriter(EarthquakesDict):
     for EqName, EqValues in EarthquakesDict.items():
         for soilIndex, soil in enumerate(Soils):
             SName = Soil_Name[soilIndex]
-            for ScaleFactor in ScaleFactors: #[0:1]:
+            for ScaleFactor in ScaleFactors:  # [0:1]:
                 i = 0
                 for LName, Svalues in soil.items():
-                        SoilPara = doc.getPhysicalProperty(SoilIDs[i])
-    
-                        # SOil Parameters Udpate
-                        SoilPara.XObject.getAttribute("rho").quantityScalar.value = Svalues[0]
-                        SoilPara.XObject.getAttribute("refShearModul").quantityScalar.value = Svalues[1]
-                        SoilPara.XObject.getAttribute("refBulkModul").quantityScalar.value = Svalues[2]
-                        SoilPara.XObject.getAttribute("cohesi").quantityScalar.value = Svalues[3]
-                        SoilPara.XObject.getAttribute("peakShearStra").real = Svalues[4]
-                        SoilPara.XObject.getAttribute("Optional").boolean = True
-                        SoilPara.XObject.getAttribute("frictionAng").real = Svalues[5]
-                        SoilPara.XObject.getAttribute("refPress").quantityScalar.value = Svalues[6]
-                        SoilPara.XObject.getAttribute("pressDependCoe").real = Svalues[7]
-                        SoilPara.commitXObjectChanges()
-                        i += 1
+                    SoilPara = doc.getPhysicalProperty(SoilIDs[i])
+
+                    # SOil Parameters Udpate
+                    SoilPara.XObject.getAttribute("rho").quantityScalar.value = Svalues[0]
+                    SoilPara.XObject.getAttribute("refShearModul").quantityScalar.value = Svalues[1]
+                    SoilPara.XObject.getAttribute("refBulkModul").quantityScalar.value = Svalues[2]
+                    SoilPara.XObject.getAttribute("cohesi").quantityScalar.value = Svalues[3]
+                    SoilPara.XObject.getAttribute("peakShearStra").real = Svalues[4]
+                    SoilPara.XObject.getAttribute("Optional").boolean = True
+                    SoilPara.XObject.getAttribute("frictionAng").real = Svalues[5]
+                    SoilPara.XObject.getAttribute("refPress").quantityScalar.value = Svalues[6]
+                    SoilPara.XObject.getAttribute("pressDependCoe").real = Svalues[7]
+                    SoilPara.commitXObjectChanges()
+                    i += 1
 
                 # Earthquake Changes
                 UniformEXc.XObject.getAttribute("tsTag").index = GMDefinition
                 UniformEXc.commitXObjectChanges()
 
                 # Transient Analysis Step Changes
-                TransientAnalysis.XObject.getAttribute("numIncr").integer = 2500
-                TransientAnalysis.XObject.getAttribute("duration/transient").real = 25
+                TransientAnalysis.XObject.getAttribute("numIncr").integer = 4000
+                TransientAnalysis.XObject.getAttribute("duration/transient").real = 30
                 TransientAnalysis.commitXObjectChanges()
 
                 # Eaarthquake data definition
@@ -125,13 +134,12 @@ def ScriptWriter(EarthquakesDict):
                 except Exception as e:
                     print(f"Error processing GM: {e}")
                     GMs = np.zeros(5000)
-                print(GM[0:10], EqName)
+                # print(GM[0:10], EqName)
                 for eq_ind, eq in enumerate(GMs):
                     EQ_space.XObject.getAttribute("list_of_values").quantityVector.setValueAt(eq_ind, eq)
                 EQ_space.XObject.getAttribute('-factor').boolean = True
                 EQ_space.XObject.getAttribute('cFactor').real = ScaleFactor
                 EQ_space.XObject.getAttribute('dt').real = EqValues["dt"]
-
 
                 EQ_space.commitXObjectChanges()
 
@@ -299,8 +307,8 @@ def load_PEERNGA_record(filepath: str):
 
 if __name__ == '__main__':
     # Check if file exists, else create it
-    root_folder  = os.getcwd()
-    file_path = os.path.join(root_folder, "FilePaths.txt")
+    root_folder = os.getcwd()
+    file_path = os.path.join(root_folder, f"{MainPathFile}.txt")
     if not os.path.exists(file_path):
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("")  # create an empty file
@@ -308,10 +316,10 @@ if __name__ == '__main__':
     else:
         print(f"File already exists: {file_path}")
 
-    #Earthquakes Segregation
+    # Earthquakes Segregation
     root_folder = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\Grouped_By_Row_Metadata"
     scaled_files = []  # to store all file paths under each 'Scaled' folder
-    
+
     # Walk through the entire directory tree
     for dirpath, dirnames, filenames in os.walk(root_folder):
         # Check if the current folder name is 'Scaled'
@@ -319,23 +327,20 @@ if __name__ == '__main__':
             for file in filenames:
                 full_path = os.path.join(dirpath, file)
                 scaled_files.append(full_path)
-    
     # Print or use the collected paths
     print(f"Total Scaled files found: {len(scaled_files)}")
     EarthquakesDict = {}
-    for filename in scaled_files:#[0:1]:
+    for filename in scaled_files[0:1]:
         acc, dt, npts, eqname = load_PEERNGA_record(filename)
         if eqname not in EarthquakesDict:
             EarthquakesDict[eqname] = {}
-            
-        EarthquakesDict[eqname]["acc"]=acc
-        EarthquakesDict[eqname]["dt"]=dt
-        EarthquakesDict[eqname]["npts"]=npts
-        EarthquakesDict[eqname]["eqname"]=eqname
-    print(EarthquakesDict)
 
-    
-    
+        EarthquakesDict[eqname]["acc"] = acc
+        EarthquakesDict[eqname]["dt"] = dt
+        EarthquakesDict[eqname]["npts"] = npts
+        EarthquakesDict[eqname]["eqname"] = eqname
+    # print(EarthquakesDict)
+
     if WriteScriptQ:
         ScriptWriter(EarthquakesDict)
     elif AnalyzeQ:
