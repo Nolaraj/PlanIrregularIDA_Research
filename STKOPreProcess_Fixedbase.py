@@ -24,7 +24,7 @@ status_interval = 5
 MainPathFile = "FilePathsSoil"
 # Available Names = [S, L1, L2, L3, L4, R]
 Building_Name = "L1"
-ScaleFactors = [0.05]#, 0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.25, 1.5, 2, 3, 4]
+ScaleFactors = [0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1]#, 1.25, 1.5, 2, 3, 4]
 fixedBase  = False
 
 
@@ -336,7 +336,7 @@ if __name__ == '__main__':
     # Print or use the collected paths
     print(f"Total Scaled files found: {len(scaled_files)}")
     EarthquakesDict = {}
-    for filename in scaled_files[0:1]:
+    for filename in scaled_files:
         acc, dt, npts, eqname = load_PEERNGA_record(filename)
         if eqname not in EarthquakesDict:
             EarthquakesDict[eqname] = {}
