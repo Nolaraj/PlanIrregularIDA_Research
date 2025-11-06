@@ -49,7 +49,7 @@ Fixed = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0],
 if fixedBase:
 	Soils = [Fixed]
 	Soil_Name = ["Fixed"]
-	timeDuration = 25
+	timeDuration = 20
 	numIncr = 2500
 	
 
