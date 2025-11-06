@@ -85,6 +85,7 @@ class Worker(QObject):
         ResultObj = ModelInfo[2]
         Index = ModelInfo[3]
         BaseCondition = ModelInfo[4]
+        TS_File = ModelInfo[5]
 
         SSI_Analysis = ModelPara()
         print(BuildingName, FolderPath, ResultObj, Index, BaseCondition)
@@ -1095,7 +1096,7 @@ class Worker(QObject):
                            "DiaphragmMomentY"
                            ]
 
-                for head, ResultObj in TS_Files.items():
+                for head, ResultObj in TS_File.items():
                     if head not in list(TSPairs.keys()):
                         continue  # Skip unknown headers
 
@@ -1183,7 +1184,7 @@ Drift_sp_file.close()
 
 ResultObjects = []
 Paths = []
-TS_Files = {}
+TS_Files = []
 for index, line in enumerate(lines):
     path = line.strip()
 
@@ -1217,11 +1218,13 @@ for index, line in enumerate(lines):
     "DiaphragmMomentX",
     "DiaphragmMomentY"
     ]
+    TS_File = {}
     for name in TSFilenames:
         filename = f"{name}.txt"
         FilePath = os.path.join(basedir, filename)
         ResultObj = open(FilePath, 'w+')
-        TS_Files[name] = ResultObj
+        TS_File[name] = ResultObj
+    TS_Files.append(TS_File)
 
 for index, line in enumerate(Paths):
     path = line.strip()
@@ -1237,7 +1240,8 @@ for index, line in enumerate(Paths):
             App.runCommand("OpenDatabase", RecordPath)
             break
     print("sdfsd", ResultObjects[index])
-    ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index, BaseCondition]
+    """Remember to pass all the arguments that are created in global space are needed to be passed to Worker from entering it to ModelInfo"""
+    ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index, BaseCondition, TS_Files[index]]
     thread = QThread()
     worker = Worker()
     worker.moveToThread(thread)
