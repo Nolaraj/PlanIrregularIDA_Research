@@ -302,9 +302,7 @@ def GroupWriter(worksheet, ws, LiveRow, SubjectCode, IdentifierCol, SelectedRows
                     Xvalue = []
                     for Rindex, row in enumerate(
                             range(SelectedRows[Cindex-1][0] + skip_TitleRows, SelectedRows[Cindex-1][1])):
-                        print(sourCol)
                         value = float(worksheet.cell(row=row, column=sourCol).value)
-                        print(value, sourCol)
                         ws.cell(row=LiveRow + Rindex, column=Cindex + 1,  value=value)
 
                         Xvalue.append(value)
@@ -329,7 +327,6 @@ def Charts(ws, YValues, XValues, XLabel, YLabel,SeriesLabel, AnchourCell = "",  
     xvalues = None
     values = None
     series = None
-    print(YValues)
 
 
     if len(YValues[0]) == 1:
@@ -401,7 +398,6 @@ def DataSorting(refSheet, workingSheet, sortDatabase, sortRef , alsoSortfor, Sel
     # Selected rows list (Contains the value with rowStart and rowEnd)
     SelectedRows = []
     for row in SelectedTable_Rows:
-        print(row, SelectedTable_Rows)
         RowStart, RowEnd, ColumnStart, ColumnEnd = tableExtent(worksheet, row)
         SelectedRows.append([RowStart, RowEnd])
 
@@ -456,7 +452,6 @@ def DataSorting(refSheet, workingSheet, sortDatabase, sortRef , alsoSortfor, Sel
     alsoSortCols = []
     for alsoSort in alsoSortfor:
         alsoSortCols.append(colContains_List(worksheet, alsoSort)[0])
-    print(alsoSortCols)
 
     for origInd, ind in enumerate(sortedIndex):
         rowStart = SelectedRows[ind][0]
@@ -580,7 +575,7 @@ def Group_A(Keyword = "Drift X"):
     for row in wsTableRows:
         RowStart, RowEnd, ColumnStart, ColumnEnd = tableExtent(ws, row)
         TableInfo.append([RowStart, RowEnd, ColumnStart, ColumnEnd])
-    print(TableInfo, "dfasdfasdfasdfasdfasdfasdf")
+    # print(TableInfo, "dfasdfasdfasdfasdfasdfasdf")
 
     # Correction
     if Keyword.split(" ")[0] == "Drift":
@@ -844,7 +839,6 @@ def Group_C(Keyword = "Reaction Force X"):
 
                 else:
                     cellvalue = worksheet.cell(row = row, column = col).value
-                    print(cellvalue)
 
                     Identifer = Identifiers[Rindex]
                     Multiplier = MultiplierComp(Identifer, IdentifierList,  corrDataList, Keyword =Keyword)
@@ -878,6 +872,7 @@ Dashes = ["solid", "sysDash", "dash", "dot", "sysDot", "lgDashDot",  "dashDot", 
 Earthquakes, ScaleFactors_fromData, Buildings, Soils = ExcelWriter(ResultFiles, OutputPath, Sheetname)
 for key in ResultsKey:
     Group_A(Keyword = key)
+    print(f"Finished writing for {key}")
 #
 # ####Normalizing of the values in the table
 # #### Assembly_Correction(OutputPath, Sheetname, Keyword = "Reaction Force X")
