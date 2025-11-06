@@ -51,7 +51,11 @@ def RunCMD(command, interval, index=1):
 
         if process.returncode == 0:
             print("Completed Successfully")
+
+            DoneFile = open(AnalysisDonePath, "a")
             DoneFile.write(folder_path + "\n")
+            DoneFile.close()
+
         else:
             print(f"Solver failed for {folder_path}. Return code: {process.returncode}")
 
@@ -77,7 +81,16 @@ def Analyze():
     Paths = PathRefiner(Input_Files)
 
 
+
+
     for index, Item in enumerate(Paths):
+        DonePaths = []
+        if os.path.exists(AnalysisDonePath):
+            file1 = open(AnalysisDonePath, "r")
+            Input_Files = file1.readlines()
+            DonePaths = PathRefiner(Input_Files)
+            file1.close()
+
         if Item not in DonePaths:
             command_to_run = [
                 Item ,
@@ -135,19 +148,17 @@ def getInnermostDirswithSizeLessthanmb(root_dir):
 if __name__ == '__main__':
     #Get all the files with size less that 5 mb in the text file
     root_dir = r"E:\Machine Learning Research\Numerical Analysis\Trial 1"
-    getInnermostDirswithSizeLessthanmb(root_dir)
+    # getInnermostDirswithSizeLessthanmb(root_dir)
 
     #Processing for the data to be Analyzed excluding the files that were previosly analyzed
     MainPathFile = open_file_dialog()
     FolderPath = os.path.dirname(MainPathFile)
     AnalysisDonePath = os.path.join(FolderPath, CompletedFile)
-    DonePaths = []
-    if os.path.exists(AnalysisDonePath):
-        file1 = open(AnalysisDonePath, "r")
-        Input_Files = file1.readlines()
-        DonePaths = PathRefiner(Input_Files)
-        file1.close()
-    DoneFile = open(AnalysisDonePath, "a")
+    # DonePaths = []
+    # if os.path.exists(AnalysisDonePath):
+    #     file1 = open(AnalysisDonePath, "r")
+    #     Input_Files = file1.readlines()
+    #     DonePaths = PathRefiner(Input_Files)
+    #     file1.close()
 
-    # Analyze()
-    # DoneFile.close()
+    Analyze()
