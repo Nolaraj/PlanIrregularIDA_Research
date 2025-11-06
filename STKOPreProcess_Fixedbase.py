@@ -23,7 +23,7 @@ AnalyzeQ = False
 status_interval = 5
 MainPathFile = "FilePathsSoil"
 # Available Names = [S, L1, L2, L3, L4, R]
-Building_Name = "L1"
+Building_Name = "S"  
 ScaleFactors = [0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1]#, 1.25, 1.5, 2, 3, 4]
 fixedBase  = False
 
