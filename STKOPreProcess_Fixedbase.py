@@ -57,7 +57,7 @@ else:
 	Soils = [Soil_Parameters_Soft, Soil_Parameters_Medium, Soil_Parameters_Hard]
 	Soil_Name = ["Soft", "Medium", "Hard"]
 	timeDuration = 20
-	numIncr = 1500
+	numIncr = 2500
 	
 
 
