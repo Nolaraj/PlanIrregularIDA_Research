@@ -132,14 +132,14 @@ def ScriptWriter(EarthquakesDict):
                 GM = np.array(EqValues["acc"], dtype=float)
                 try:
 
-                    if len(GM) >= 5000:
-                        GMs = GM[:5000]
+                    if len(GM) >= 2000:
+                        GMs = GM[:2000]
                     else:
-                        # Pad with zeros up to 5000 length
-                        GMs = np.pad(GM, (0, 5000 - len(GM)), mode='constant', constant_values=0)
+                        # Pad with zeros up to 2000 length
+                        GMs = np.pad(GM, (0, 2000 - len(GM)), mode='constant', constant_values=0)
                 except Exception as e:
                     print(f"Error processing GM: {e}")
-                    GMs = np.zeros(5000)
+                    GMs = np.zeros(2000)
                 # print(GM[0:10], EqName)
                 for eq_ind, eq in enumerate(GMs):
                     EQ_space.XObject.getAttribute("list_of_values").quantityVector.setValueAt(eq_ind, eq)
