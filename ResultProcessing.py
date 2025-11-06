@@ -371,8 +371,8 @@ def Charts(ws, YValues, XValues, XLabel, YLabel,SeriesLabel, AnchourCell = "",  
     chart.x_axis.title.tx.rich.p[0].pPr = pp
     chart.y_axis.title.tx.rich.p[0].pPr = pp
     # Adjust graph size
-    chart.width = 12     #Elselvier page halfwidth = 9cm        Writing area Only
-    chart.height = 8   #Elselvier page full height = 24 cm        Writing area Only
+    chart.width = 15     #Elselvier page halfwidth = 9cm        Writing area Only
+    chart.height = 12   #Elselvier page full height = 24 cm        Writing area Only
 
 
 
@@ -603,7 +603,7 @@ def Group_A(Keyword = "Drift X"):
         for i in range(ColumnStart + 1, ColumnEnd):
             XValues[0].append(i)
 
-        Anchor = f"{get_column_letter(ColumnEnd + 2)}{RowStart}"
+        Anchor = f"{get_column_letter(ColumnEnd + 2)}{RowStart+1}"
 
         key = Keyword.split()[0]
         direction = Keyword.split()[1]
