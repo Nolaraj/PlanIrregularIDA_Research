@@ -49,10 +49,16 @@ Fixed = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0],
 if fixedBase:
 	Soils = [Fixed]
 	Soil_Name = ["Fixed"]
+	timeDuration = 25
+	numIncr = 2500
+	
 
 else:
 	Soils = [Soil_Parameters_Soft, Soil_Parameters_Medium, Soil_Parameters_Hard]
 	Soil_Name = ["Soft", "Medium", "Hard"]
+	timeDuration = 20
+	numIncr = 1500
+	
 
 
 Earthquake_Parameters = {"Gorkha": [10, 1900, 9.5]}  # ,
@@ -118,8 +124,8 @@ def ScriptWriter(EarthquakesDict):
                 UniformEXc.commitXObjectChanges()
 
                 # Transient Analysis Step Changes
-                TransientAnalysis.XObject.getAttribute("numIncr").integer = 4000
-                TransientAnalysis.XObject.getAttribute("duration/transient").real = 30
+                TransientAnalysis.XObject.getAttribute("numIncr").integer = numIncr
+                TransientAnalysis.XObject.getAttribute("duration/transient").real = timeDuration
                 TransientAnalysis.commitXObjectChanges()
 
                 # Eaarthquake data definition
