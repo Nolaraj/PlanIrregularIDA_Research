@@ -8,7 +8,7 @@ import math
 import shutil
 import subprocess
 
-use_dialog = True  # True = Dialog, False = Event Loop
+use_dialog = False  # True = Dialog, False = Event Loop
 
 
 class QBlockingSlot(QObject):
@@ -88,7 +88,7 @@ class Worker(QObject):
         TS_File = ModelInfo[5]
 
         SSI_Analysis = ModelPara()
-        print(BuildingName, FolderPath, ResultObj, Index, BaseCondition)
+        # print(BuildingName, FolderPath, ResultObj, Index, BaseCondition)
         # Diaphragm Drift = False computes the drift for each of the column and returns its maximum
         DiaphragmDrift = False
         DiaphragmDisp = True
@@ -375,9 +375,9 @@ class Worker(QObject):
                             XGrids[floor] = dynXGrid
                             YGrids[floor] = dynYGrid
 
-                        for floor, Grids in XGrids.items():
-                            for grid, nodes in Grids.items():
-                                print(f"Floor {floor}, Grid X={grid}m, nodes, {nodes}")
+                        # for floor, Grids in XGrids.items():
+                        #     for grid, nodes in Grids.items():
+                        #         print(f"Floor {floor}, Grid X={grid}m, nodes, {nodes}")
 
                     def ColFloorWise():
                         # Write to the set for element object floorwise
@@ -819,7 +819,7 @@ class Worker(QObject):
                             Uz_Min_Node.append(i_Uz_Min_Node)
 
                 # print(all_driftsX, all_driftsY)
-                print(BaseReactionX)
+                # print(BaseReactionX)
 
             Extractor()
 
@@ -1043,7 +1043,6 @@ class Worker(QObject):
                         Items.append(str(Max_Settlement_Point))
                         Items.append(str(MaxBS_PseudoTime))
 
-                    print("All items cretaeed")
 
                     ResultObj.write('\t'.join(Items))
                     ResultObj.write('\n')
@@ -1156,7 +1155,6 @@ class Worker(QObject):
                     #                "BaseRotations", Rotation_X, Rotation_Y]
 
             TS_writer()
-            print(TS_Files)
 
         ResultExt_Writer()
 
@@ -1239,7 +1237,6 @@ for index, line in enumerate(Paths):
             RecordPath = os.path.join(unicode_path, file)
             App.runCommand("OpenDatabase", RecordPath)
             break
-    print("sdfsd", ResultObjects[index])
     """Remember to pass all the arguments that are created in global space are needed to be passed to Worker from entering it to ModelInfo"""
     ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index, BaseCondition, TS_Files[index]]
     thread = QThread()
@@ -1271,7 +1268,7 @@ for index, line in enumerate(Paths):
     else:
         loop.exec_()
 
-    print(f"Well Executed for Index No {index}")
+    print(f"Correctly executed for index no {index}")
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
 
