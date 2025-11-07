@@ -547,7 +547,6 @@ destination_root = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes
 # GrouptoFolder_FromSelectedinExcel(source_folders, excel_path, sheet_name, destination_root)
 
 #===============================================================EQs Segregation to horizontal and vertical components files
-destination_root = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\Grouped_By_Row_Metadata"
 earthquake_files = EQ_H_V_Segregation(destination_root)
 
 #===============================================================Matching and handling
@@ -583,8 +582,12 @@ def DataProcessing(earthquake_files):
         Horizontals = InDict["Horizontal"]
         Verticals = InDict["Vertical"]
 
-        seed1 = Horizontals[0]
-        seed2 = Horizontals[1]
+        if len(Horizontals)> 1:
+            seed1 = Horizontals[0]
+            seed2 = Horizontals[1]
+        else:
+            seed1 = Horizontals[0]
+            seed2 = Horizontals[0]
         EQNameOnly = extract_eqname(seed1, EqNameOnly = True)
 
         acc1, dt1, npts1, eqname1 = load_PEERNGA_record(seed1)
@@ -918,7 +921,6 @@ def DataProcessing(earthquake_files):
         wb.save(save_path)
         print(f"✅ All earthquake data written side-by-side to:\n{save_path}")
 
-
+print(earthquake_files)
 DataProcessing(earthquake_files)
-
 
