@@ -1156,6 +1156,33 @@ class Worker(QObject):
 
             TS_writer()
 
+            #Clearing for all the data containers to prepare for next iteration
+            all_times = []
+            Drift_sp_target_i = []
+            Drift_sp_target_j = []
+
+            node_CoOrds = {}
+            topFloorsDispTS_X = {}
+            topFloorsDispTS_Y = {}
+            topFloorsRotationTS_Z = {}
+
+            all_driftsX = {}
+            all_driftsY = {}
+            all_dispX = {}
+            all_dispY = {}
+            BaseReactionX = {}
+            BaseReactionY = {}
+            BaseMomentX = {}
+            BaseMomentY = {}
+            Rotation_X = {}
+            Rotation_Y = {}
+            Rotation_Z = {}
+            TorsionalIrregularityRatio = {}
+            Uz_Max = []
+            Uz_Max_Node = []
+            Uz_Min = []
+            Uz_Min_Node = []
+
         ResultExt_Writer()
 
         self.finished.emit()
@@ -1268,7 +1295,7 @@ for index, line in enumerate(Paths):
     else:
         loop.exec_()
 
-    print(f"Correctly executed for index no {index}")
+    print(f"Correctly executed: Index {index}")
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
 
