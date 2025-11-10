@@ -23,10 +23,9 @@ AnalyzeQ = False
 status_interval = 5
 MainPathFile = "FilePathsSoil"
 # Available Names = [S, L1, L2, L3, L4, R]
-Building_Name = "S"  
-ScaleFactors = [0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1]#, 1.25, 1.5, 2, 3, 4]
-fixedBase  = False
-
+Building_Name = "S"
+ScaleFactors = [ 0.1, 0.2, 0.4, 0.6, 0.8, 1]  # , 1.25, 1.5, 2, 3, 4]
+fixedBase = False
 
 Soil_Parameters_Soft = {"Layer1": [1.83, 65352, 196056, 42, 0.35, 0, 100, 0.0],
                         "Layer2": [1.83, 69883, 209649, 42, 0.35, 0, 100, 0.0],
@@ -41,25 +40,54 @@ Soil_Parameters_Medium = {"Layer1": [1.79, 55195, 165586, 38, 0.35, 0, 100, 0.0]
 Soil_Parameters_Hard = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0],
                         "Layer2": [1.97, 152818, 458456, 17, 0.35, 32, 100, 0.0],
                         "Layer3": [1.92, 188263, 564790, 100, 0.35, 32, 100, 0.0]}
+#______________________________________________________________________________________________
+Soil_Sundhara = {"Layer1": [1.73, 77441, 232326, 19, 0.35, 28, 100, 0.0],
+                        "Layer2": [1.82, 121022, 363068, 41, 0.35, 18, 100, 0.0],
+                        "Layer3": [1.68, 66964, 200893, 100, 0.35, 15, 100, 0.0]}
+Soil_Sankhamul = {"Layer1": [1.63, 78895, 115796, 17, 0.35, 17, 100, 0.0],
+                        "Layer2": [1.63, 72795, 218387, 39, 0.35, 20, 100, 0.0],
+                        "Layer3": [1.63, 87269, 261807, 100, 0.35, 20, 100, 0.0]}
+Soil_Tangal = {"Layer1": [1.87, 101386, 304157, 33, 0.35, 26, 100, 0.0],
+                        "Layer2": [1.88, 150406, 451219, 26, 0.35, 22, 100, 0.0],
+                        "Layer3": [1.87, 131053, 393159, 100, 0.35, 24, 100, 0.0]}
+Soil_Kalikastan = {"Layer1": [1.83, 74226, 222678, 45, 0.35, 35, 100, 0.0],
+                        "Layer2": [1.83, 104676, 314027, 52, 0.35, 37, 100, 0.0],
+                        "Layer3": [1.84, 118299, 354898, 100, 0.35, 36, 100, 0.0]}
+Soil_Khusibu = {"Layer1": [1.63, 30973, 92919, 28, 0.35, 11, 100, 0.0],
+                        "Layer2": [1.63, 41897, 125692, 20, 0.35, 18, 100, 0.0],
+                        "Layer3": [1.63, 49063, 147188, 100, 0.35, 18, 100, 0.0]}
+Soil_Naxal = {"Layer1": [1.88, 45891, 137672, 14, 0.35, 30, 100, 0.0],
+                        "Layer2": [1.89, 146808, 440425, 13, 0.35, 23, 100, 0.0],
+                        "Layer3": [1.88, 177364, 532091, 100, 0.35, 27, 100, 0.0]}
+Soil_Putalisadak= {"Layer1": [1.79, 68174, 204523, 23, 0.35, 5, 100, 0.0],
+                        "Layer2": [1.79, 62880, 188641, 28, 0.35, 7, 100, 0.0],
+                        "Layer3": [1.80, 52733, 158198, 100, 0.35, 9, 100, 0.0]}
+Soil_Gaushala = {"Layer1": [1.59, 57291, 171872, 11, 0.35, 22, 100, 0.0],
+                        "Layer2": [1.64, 87638, 262915, 22, 0.35, 16, 100, 0.0],
+                        "Layer3": [1.77, 144167, 432501, 100, 0.35, 22, 100, 0.0]}
+Soil_Shantinagar = {"Layer1": [1.68, 80646, 241937, 39, 0.35, 29, 100, 0.0],
+                        "Layer2": [1.80, 110539, 331618, 35, 0.35, 32, 100, 0.0],
+                        "Layer3": [1.77, 93421, 280263, 100, 0.35, 32, 100, 0.0]}
+#______________________________________________________________________________________________
 
 Fixed = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0],
          "Layer2": [1.97, 152818, 458456, 17, 0.35, 32, 100, 0.0],
          "Layer3": [1.92, 188263, 564790, 100, 0.35, 32, 100, 0.0]}
 
 if fixedBase:
-	Soils = [Fixed]
-	Soil_Name = ["Fixed"]
-	timeDuration = 20
-	numIncr = 2500
-	
+    Soils = [Fixed]
+    Soil_Name = ["Fixed"]
+    timeDuration = 50
+    numIncr = 5000
+
 
 else:
-	Soils = [Soil_Parameters_Soft, Soil_Parameters_Medium, Soil_Parameters_Hard]
-	Soil_Name = ["Soft", "Medium", "Hard"]
-	timeDuration = 20
-	numIncr = 2500
-	
-
+    # Soils = [Soil_Parameters_Soft, Soil_Parameters_Medium, Soil_Parameters_Hard]
+    # Soil_Name = ["Soft", "Medium", "Hard"]
+    Soils = [Soil_Sundhara, Soil_Sankhamul, Soil_Tangal, Soil_Kalikastan, Soil_Khusibu, Soil_Naxal,Soil_Putalisadak, Soil_Gaushala, Soil_Shantinagar ]
+    Soil_Name = ["Soil_Sundhara", "Soil_Sankhamul", "Soil_Tangal", "Soil_Kalikastan", "Soil_Khusibu", "Soil_Naxal","Soil_Putalisadak", "Soil_Gaushala", "Soil_Shantinagar" ]
+    timeDuration = 50
+    numIncr = 5000
 
 Earthquake_Parameters = {"Gorkha": [10, 1900, 9.5]}  # ,
 # "Northridge": [12, 1500, 15],
@@ -77,9 +105,6 @@ monitorBottomID = 12
 RecorderID = 2
 TrainsientAID = 13
 GMDefinition = 10
-
-
-
 
 # SoilPara = doc.getPhysicalProperty(Soil1ID)
 # SoilPara = doc.getPhysicalProperty(Soil2ID)
