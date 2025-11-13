@@ -1,16 +1,10 @@
-from openpyxl.styles import Font, Fill, Color, PatternFill  # Connect styles for text
-from openpyxl.utils import get_column_letter, column_index_from_string
-import openpyxl
-from openpyxl.utils.units import pixels_to_EMU
-from openpyxl.chart.text import RichText
-from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties, RichTextProperties, Font, RegularTextRun
-from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
+#It is designed solely for copying the .txt files from one root folder to another with preserving its tree structure.
+# When the open dialog is opened selected the parent root folder from which the data needs to be extracted and transferred.
+#Similarly path of the output folder is where the data are copied back then.
 
 import tkinter as tk
 from tkinter import filedialog
 import os
-import sqlite3
-import pandas as pd
 import shutil
 
 
@@ -70,12 +64,13 @@ for index, file in enumerate(validfiles):
 
 # print(pathsContainer)
 # print(len(validfiles), len(invalidfiles))
+
+#_________________________________________________________________________________________Output Defination
 OutputDir = r"E:\Machine Learning Research\Numerical Analysis\ExtractedResults\New folder"
 for key, value  in pathsContainer.items():
     TsFolder = value[0]
     resultfile = value[1]
 
-    newTSpath = os.path.join(OutputDir, )
     newTSpath = TsFolder.replace(folderpath, OutputDir, 1)
     newResultPath  = resultfile.replace(folderpath, OutputDir, 1)
     if not os.path.exists(newTSpath):
