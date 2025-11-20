@@ -143,6 +143,8 @@ def sqLite_writer(ResultFiles, OutputPath):
         inputparaFlattening(Buildings_Info, Building)
         inputparaFlattening(Soils_Info, BaseCondition)
         inputparaFlattening(Earthquakes_Info, Earthquake)
+        flat_titles.extend(["Fundamental_Period"])
+        flat_values.extend([Compound_Info[Building][BaseCondition]])
 
         fObj = open(file, "r")
         lines = fObj.read()
@@ -249,6 +251,7 @@ informationData = r"E:\Machine Learning Research\DataModelling\Modelling Informa
 Buildings_Info = readInformationFile(informationData, sheet_name="Buildings")
 Earthquakes_Info = readInformationFile(informationData, sheet_name="Earthquakes")
 Soils_Info = readInformationFile(informationData, sheet_name="Soils")
+Compound_Info = readInformationFile(informationData, sheet_name="Compound Data")
 
 
 Earthquakes, ScaleFactors_fromData, Buildings, Soils = sqLite_writer(ResultFiles, OutputPath)
