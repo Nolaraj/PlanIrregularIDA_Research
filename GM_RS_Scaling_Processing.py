@@ -11,7 +11,8 @@ import os
 from collections import defaultdict
 from typing import Tuple, List, Optional, Dict, Any
 log = logging.getLogger(__name__)
-
+import json
+import pprint
 import os
 import shutil
 import pandas as pd
@@ -53,6 +54,16 @@ from openpyxl.drawing.text import CharacterProperties, Font as DrawFont
 from openpyxl.drawing.text import CharacterProperties, Font as DrawFont, ParagraphProperties
 from openpyxl.chart.axis import ChartLines
 
+
+def open_folder_dialog():
+    root = tk.Tk()
+    root.withdraw()
+
+    folder_path = filedialog.askdirectory(
+        title="Select the root folder containing the results"
+    )
+
+    return folder_path
 def extract_eqname(filepath, EqNameOnly = True):
     # EqNameOnly provides only name of earthquake else whole earthquake info is passed out
     """Extract earthquake name info from the 2nd line of .AT2 file."""
@@ -528,28 +539,33 @@ def fix_RSperiodspacing(file):
 
     print("Interpolation done! Data saved to 'A_interpolated.txt'.")
 
-#===============================================================RS period adjustments
-# fix_RSperiodspacing(r"C:\Users\Acer\Documents\Civil_Multipurpose Software\IS1893_Soft.txt")
 
-#===============================================================EQs Grouping
-folderpath = r'E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\300to 800 Vs rescords'
-# earthquake_groups = EarthquakeGrouping(folderpath)
+def deep_clean(obj):
+    # numpy array → list
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
 
-#===============================================================EQs Extraction from dir based on Excel selected rows
-source_folders = [
-    r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\300to 800 Vs rescords",
-    r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\200to 300",
-    r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\Selected"
-]
-excel_path = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\Earthquakes Data.xlsx"
-sheet_name = "Selected EQS"
-destination_root = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\Grouped_By_Row_Metadata"
-# GrouptoFolder_FromSelectedinExcel(source_folders, excel_path, sheet_name, destination_root)
+    # numpy scalars → Python scalars
+    if isinstance(obj, (np.float32, np.float64, np.float_)):
+        return float(obj)
+    if isinstance(obj, (np.int32, np.int64, np.int_)):
+        return int(obj)
 
-#===============================================================EQs Segregation to horizontal and vertical components files
-earthquake_files = EQ_H_V_Segregation(destination_root)
+    # dict → recursively clean its values
+    if isinstance(obj, dict):
+        return {key: deep_clean(value) for key, value in obj.items()}
 
-#===============================================================Matching and handling
+    # list or tuple → recursively clean elements
+    if isinstance(obj, (list, tuple)):
+        return [deep_clean(item) for item in obj]
+
+    # set → convert to list (JSON can't handle sets)
+    if isinstance(obj, set):
+        return [deep_clean(item) for item in obj]
+
+    # everything else stays same
+    return obj
+
 def DataProcessing(earthquake_files):
     def constIntTS(timeseries, intervals):
         t = np.asarray(timeseries["t"], dtype=float)
@@ -648,6 +664,7 @@ def DataProcessing(earthquake_files):
                 timeseries = constIntTS(timeseries, intervals)
                 dt = intervals
             #Unit
+            timeseriesG = timeseries["accSeries"]
             if Unit == "m/s²":
                 timeseries["accSeries"] = timeseries["accSeries"] * 9.81
                 accSeriesScaled = timeseries["accSeries"]
@@ -673,6 +690,11 @@ def DataProcessing(earthquake_files):
                                       'component': f"{eqname.split('_comp_')[-1]}-Matched"}
             results = {"comp_key":accSeriesScaled, "dt":dt}
             save_results_as_at2(results, at2_filepath, comp_key='comp_key', header_details=at2_header_details, acc_format=Unit)
+
+            output_base_name = "_ScaledG_" + os.path.basename(source_seed)[:-4] + '_' + "RefPeriod" + '_' +  str(refPeriod)  +".AT2"      # Base name for output files
+            at2_filepath = os.path.join(directory, output_base_name)
+            save_results_as_at2({"comp_key":timeseriesG, "dt":dt}, at2_filepath, comp_key='comp_key', header_details=at2_header_details, acc_format="g")
+
             print(timeseries["accSeries"])
             print(accSeriesScaled)
 
@@ -921,6 +943,423 @@ def DataProcessing(earthquake_files):
         wb.save(save_path)
         print(f"✅ All earthquake data written side-by-side to:\n{save_path}")
 
-print(earthquake_files)
-DataProcessing(earthquake_files)
+def seismic_IM(dirs):
+    # !/usr/bin/env python -W ignore::Warning
+    # -*- coding: utf-8 -*-
 
+    # IM_Analysis_BosaiKiKNet.py
+    # Copyright (C) 2010-2022 Maria LANCIERI
+
+    # This program is free software: you can redistribute it and/or modify
+    # it under the terms of the GNU General Public License as published by
+    # the Free Software Foundation, either version 3 of the License, or
+    # (at your option) any later version.
+
+    # This program is distributed in the hope that it will be useful,
+    # but WITHOUT ANY WARRANTY; without even the implied warranty of
+    # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    # GNU General Public License for more details.
+
+    # You should have received a copy of the GNU General Public License
+    # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    import os
+    from obspy import read, read_inventory, UTCDateTime
+    from matplotlib.patches import Rectangle
+    from obspy.signal import invsim
+    from scipy.signal import welch
+    from obspy import Stream
+    from glob import glob
+
+    import signal_analysis
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.gridspec as gridspec
+    import pylab as p
+    import plot_par as ppr
+    import pickle
+    import sys
+    from matplotlib.cbook import get_sample_data
+
+    from pyproj import Geod
+    tool = signal_analysis.mytools()
+
+    Parameters = {}
+    cut = {}
+
+    def calcola_dist(evcoord, coord):
+        g = Geod(ellps='WGS84')
+        az, baz, dist = g.inv(evcoord['longitude'], evcoord['latitude'], coord['longitude'], coord['latitude'])
+
+        hypo = np.sqrt(evcoord['depth'] ** 2 + dist ** 2)
+        hypo = hypo / 1000.
+        return hypo
+
+    for ll, doss in enumerate(dirs):
+
+        dirname = os.path.dirname(doss)
+        filepath = os.path.join(dirname, "Information.txt")
+
+        print(doss)
+        for asc in glob(doss):
+            tr = tool.read_peer(asc)
+            trace_name = ("%s.%s.%s.%s") % (tr.stats.network, tr.hdr.evname, tr.stats.station, tr.stats.channel)
+            print(trace_name)
+            component = tr.stats.channel
+            Parameters[trace_name] = {}
+            Parameters[trace_name]["Filepath"] = filepath
+
+        for asc in glob(doss):
+            tr = tool.read_peer(asc)
+            trace_name = ("%s.%s.%s.%s") % (tr.stats.network, tr.hdr.evname, tr.stats.station, tr.stats.channel)
+            component = "Data"
+            Parameters[trace_name]['station'] = {}
+            Parameters[trace_name][component] = {}
+            cname = ("%s.%s") % (tr.stats.network, tr.stats.station)
+            print("TEST", cname)
+
+            figname = os.path.join(dirname,
+                                   tr.stats.network + '_' + tr.hdr.evname + '_' + tr.stats.station + '_' + tr.stats.channel + ".pdf")
+
+            """
+            ## Uncomment if you have coordinates but you don't have distances
+            sta_coord = {}
+            sta_coord['latitude']= tr.stats.sac.stla
+            sta_coord['longitude']= tr.stats.sac.stlo
+
+            ev_coord = {}
+            ev_coord['latitude']= tr.hdr.evla
+            ev_coord['longitude']= tr.hdr.evlo
+            ev_coord['depth']= tr.hdr.evdp
+
+            dist = calcola_dist(ev_coord,sta_coord)
+
+            Parameters[trace_name]['station']['stla'] = tr.stats.sac.stla
+            Parameters[trace_name]['station']['stlo'] = tr.stats.sac.stlo
+            Parameters[trace_name]['station']['distance'] = dist
+            """
+
+            delta = tr.stats.delta
+            npts = tr.stats.npts
+            time = np.arange(npts) * delta
+
+            Parameters[trace_name][component]['delta'] = delta
+
+            try:
+                cutmin, cutmax = cut[cname]
+                print(cutmin, cutmax)
+                time, acc, vel, spo, fminu, fmaxu = tool.baseline(tr.data, time, cutmin=cut[cname][0],
+                                                                  cutmax=cut[cname][1], const=1, fmin=0.1, npoles=4,
+                                                                  coswin=0.05)
+            except KeyError:
+                time, acc, vel, spo, fminu, fmaxu = tool.baseline(tr.data, time, const=(1 / 980), fmin=0.1, npoles=4,
+                                                                  coswin=0.05)
+                # pass
+
+            pga = tool.pga()
+            pgv = tool.pgv()
+            pgd = tool.pgd()
+
+            # print(pga, pgv, pgd)
+
+            Parameters[trace_name][component]['time'] = time
+            Parameters[trace_name][component]['acceleration'] = acc
+            Parameters[trace_name][component]['velocity'] = vel
+            Parameters[trace_name][component]['displacement'] = spo
+
+            freq_welch, trace_welch = welch(acc, fs=(1 / delta), nperseg=1024)
+
+            Parameters[trace_name][component]['freq_psd'] = freq_welch
+            Parameters[trace_name][component]['psd'] = trace_welch
+
+            scav, scavtime, cav, cavtime, bcav, bcavtime = tool.cav(unit='cm/s2')
+            ari, aritime, husid = tool.arias(unit='cm/s2')
+
+            stock, X, Y, extent = tool.stockwell(acc, time)
+
+            Parameters[trace_name][component]['cav'] = cav
+            Parameters[trace_name][component]['scav'] = scav
+            Parameters[trace_name][component]['bcav'] = bcav
+            Parameters[trace_name][component]['arias'] = ari
+            Parameters[trace_name][component]['husid'] = husid
+
+            freq = np.logspace(-1, np.log10(50), 100)
+            psa, psv, freq = tool.response(freq=freq)
+            spi = tool.specint('sa')
+            hous = tool.specint('psv')
+
+            Parameters[trace_name][component]['freq_response'] = freq
+            Parameters[trace_name][component]['sa'] = psa
+            Parameters[trace_name][component]['psv'] = psv
+            Parameters[trace_name][component]['spi'] = spi
+            Parameters[trace_name][component]['hous'] = hous
+
+            fig = plt.figure(1, figsize=(25, 16))
+            gs = gridspec.GridSpec(4, 4)
+            gs.update(left=0.1, right=0.95, bottom=0.05, top=0.95, hspace=0.3, wspace=0.4)
+            fsz = 18
+
+            ax0 = fig.add_subplot(gs[0, 0:2])
+            ppr.plot_wave(ax0, time, acc)
+            ppr.add_im(ax0, "PGA", pga, "cm/s^2", 0.65, 0.8)
+            ax0.set_ylabel(r'$Acceleration [cm/s^2]$', fontsize=fsz)
+            ax0.set_xlabel(r'$Time [s]$', fontsize=fsz)
+            ax0.set_title("%s" % (trace_name), fontsize=20)
+            ylim_acc = 1.2 * np.max(np.abs(acc))
+            ax0.set_ylim(-1 * ylim_acc, ylim_acc)
+
+            ax00 = fig.add_subplot(gs[1, 0:2])
+            ax00.set_ylabel(r'$Frequency [Hz]$', fontsize=fsz)
+            ax00.set_xlabel(r'$Time [s]$', fontsize=fsz)
+            cmap = ppr.ccmap(plt.cm.plasma_r)
+            ax00.imshow(np.abs(stock), interpolation="nearest", extent=extent, cmap=cmap)
+            print("Stock ext", extent)
+            ax00.axis('tight')
+            ax00.set_yscale('log')
+            ax00.tick_params(axis='both', labelsize=18)
+            ax00.set_xlim(extent[0], extent[1])
+            ax00.set_ylim(0.1, extent[3])
+
+            ax1 = fig.add_subplot(gs[2, 0:2])
+            ppr.plot_wave(ax1, time, vel)
+            ppr.add_im(ax1, "PGV", pgv, "cm/s", 0.65, 0.8)
+            ax1.set_ylabel(r'$Velocity [cm/s]$', fontsize=fsz)
+            ax1.set_xlabel(r'$Time [s]$', fontsize=fsz)
+            ylim_vel = 1.2 * np.max(np.abs(vel))
+            ax1.set_ylim(-1 * ylim_vel, ylim_vel)
+
+            ax2 = fig.add_subplot(gs[3, 0:2])
+            ppr.plot_wave(ax2, time, spo)
+            ppr.add_im(ax2, "PGD", pgd, "cm", 0.65, 0.8)
+            ax2.set_ylabel(r'$Displacement [cm]$', fontsize=fsz)
+            ax2.set_xlabel(r'$Time [s]$', fontsize=fsz)
+            ylim_spo = 1.2 * np.max(np.abs(spo))
+            ax2.set_ylim(-1 * ylim_spo, ylim_spo)
+
+            ax3 = fig.add_subplot(gs[0, 2])
+
+            ppr.plot_wave(ax3, time, bcavtime, color="r")
+            ppr.add_im(ax3, "BCAV", bcav, "gs", 0.05, 0.75)
+
+            ppr.plot_wave(ax3, time[:len(scavtime)], scavtime, color="b")
+            ppr.add_im(ax3, "SCAV", scav, "gs", 0.05, 0.90)
+
+            ppr.plot_wave(ax3, time[:len(cavtime)], cavtime)
+            ppr.add_im(ax3, "CAV", cav, "gs", 0.05, 0.60)
+
+            ax3.set_ylabel(r'$CAV [gs]$', fontsize=fsz)
+            ax3.set_xlabel(r'$Time [s]$', fontsize=fsz)
+            ax3.set_ylim(bottom=0)
+
+            ax4 = fig.add_subplot(gs[1, 2])
+            ax4.set_xscale('log')
+            ppr.plot_wave(ax4, freq_welch, trace_welch)
+            ax4.axvspan(0.05, fminu, facecolor='grey', alpha=0.5)
+            ax4.axvspan(fmaxu, 50, facecolor='grey', alpha=0.5)
+            ax4.set_ylabel(r'$PSD Amplitude [cm/s]$', fontsize=fsz)
+            ax4.set_xlabel(r'$Frequence [Hz]$', fontsize=fsz)
+            ax4.set_ylim(bottom=0)
+            ax4.set_xlim(0.05, 50)
+
+            ax5 = fig.add_subplot(gs[2, 2])
+            ax5.set_xscale('log')
+            ax5.set_yscale('log')
+            ppr.plot_wave(ax5, freq, psa, yscale='log')
+
+            ax5.axvspan(0.05, fminu, facecolor='grey', alpha=0.5)
+            ax5.axvspan(fmaxu, 50, facecolor='grey', alpha=0.5)
+            ax5.set_ylabel(r'$SA [cm/s^2]$', fontsize=fsz)
+            ax5.set_xlabel(r'$Frequency [Hz]$', fontsize=fsz)
+            ax5.set_ylim(bottom=0)
+            ax5.grid(which='both')
+            ax5.set_xlim(0.05, 50)
+
+            ax6 = fig.add_subplot(gs[0, 3])
+            ppr.plot_wave(ax6, time[:len(aritime)], aritime)
+            ppr.add_im(ax6, "Arias", ari, "m/s", 0.55, 0.1)
+            ppr.add_im(ax6, "Husid", husid, "s", 0.55, 0.3)
+            ax6.set_ylabel(r'$Arias [m/s]$', fontsize=fsz)
+            ax6.set_xlabel(r'$Time [s]$', fontsize=fsz)
+            ax6.set_ylim(bottom=0)
+
+            ax7 = fig.add_subplot(gs[1, 3])
+            ax7.set_xscale('log')
+            ppr.plot_wave(ax7, 1 / freq[::-1], psa[::-1])
+            ppr.int_surf(ax7, 0.1, 2.5, 1 / freq[::-1], psa[::-1])
+            ppr.add_im(ax7, "SPI", spi, "cm/s", 0.55, 0.9)
+            ax7.set_ylabel(r'$SA [cm/s^2]$', fontsize=fsz)
+            ax7.set_xlabel(r'$Period [s]$', fontsize=fsz)
+            ax7.set_ylim(bottom=0)
+
+            ax8 = fig.add_subplot(gs[2, 3])
+            ax8.set_xscale('log')
+            ppr.plot_wave(ax8, 1 / freq[::-1], psv[::-1])
+            ppr.int_surf(ax8, 0.1, 2.5, 1 / freq[::-1], psv[::-1])
+            ppr.add_im(ax8, "HI", hous, "cm", 0.55, 0.9)
+            ax8.set_ylabel(r'$PSV  [cm/s]$', fontsize=fsz)
+            ax8.set_xlabel(r'$Period [s]$', fontsize=fsz)
+            ax8.set_ylim(bottom=0)
+
+            plt.savefig(figname)
+            # plt.show()
+            plt.close()
+
+        # print(Parameters)
+        # pickle.dump(Parameters, fout)
+        # filename_txt = "output_readable.txt"
+        # with open(filename_txt, "w") as f:
+        #     f.write(str(Parameters))
+        # with open(filename, "w") as f:
+        #     pprint.pprint(Parameters[trace_name], stream=f)
+        # with open(filename, "w") as f:
+        #     json.dump(Parameters, f, indent=4)
+        # with open(filename, "w") as f:
+        #     f.write(pprint.pformat(Parameters[trace_name], indent=4))
+
+    # sys.exit()
+
+    return Parameters
+def ExtractionOfIMData(Parameters):
+    FeaturesVal = {}
+    for k, v in Parameters.items():
+        FeaturesVal[k] = {}
+
+        filepath = v["Filepath"]
+
+        root = v['Data']
+        seriesPara = []
+        uniquePara = []
+
+        for para, value in root.items():
+            if isinstance(value, (list, np.ndarray)):
+                # print(para, "→ SERIES")
+                seriesPara.append(para)
+            else:
+                # print(para, "→ UNIQUE:", value)
+                uniquePara.append(para)
+
+        # Create vertical concatenation inside a dict
+        # --- Prepare series data ---
+        series_concat = {}
+        for para in seriesPara:
+            arr = root[para]
+            if isinstance(arr, np.ndarray):
+                arr = arr.tolist()
+            series_concat[para] = arr
+
+        # --- Headers (series names) ---
+        headers = list(series_concat.keys())
+
+        # --- Determine max length ---
+        max_len = max(len(series_concat[h]) for h in headers)
+
+        # --- Pad series to max length ---
+        padded = {}
+        for h in headers:
+            padded[h] = series_concat[h] + [""] * (max_len - len(series_concat[h]))
+
+        # --- Write to TXT file in proper table ---
+        txt_file = filepath  # change filename if needed
+        with open(txt_file, "w", encoding="utf-8") as f:
+
+            for uniPara in uniquePara:
+                key = uniPara
+                value = root[key]
+                FeaturesVal[k][uniPara] = value
+
+                f.write("\t".join([str(key), str(value)]) + "\n")
+
+            for seriesPara in seriesPara:
+                key = "max" + seriesPara
+                value = np.max(np.abs(root[seriesPara]))
+                FeaturesVal[k][key] = value
+
+                f.write("\t".join([str(key), str(value)]) + "\n")
+
+
+            # Write header row
+            f.write("\t".join(headers) + "\n")
+
+            # Write each vertical row
+            for i in range(max_len):
+                row = [str(padded[h][i]) for h in headers]
+                f.write("\t".join(row) + "\n")
+
+        print(f"✔ Series table saved as {txt_file}")
+    return FeaturesVal
+def printUniqData(UniqueData):
+    keysList = []
+    ValueLists = []
+    for eq, datadict in UniqueData.items():
+        keysList = list(datadict.keys())
+        keysList.insert(0, "Earthquakes")  # Insert 1 at index 0
+
+        valuelist = list(datadict.values())
+        valuelist.insert(0, eq)  # Insert 1 at index 0
+        ValueLists.append(valuelist)
+
+    print("\t".join(keysList))
+    for value in ValueLists:
+        value = [str(x) for x in value]
+
+        print("\t".join(value))
+#===============================================================RS period adjustments
+# fix_RSperiodspacing(r"C:\Users\Acer\Documents\Civil_Multipurpose Software\IS1893_Soft.txt")
+
+#===============================================================EQs Grouping
+folderpath = r'E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\300to 800 Vs rescords'
+# earthquake_groups = EarthquakeGrouping(folderpath)
+
+#===============================================================EQs Extraction from dir based on Excel selected rows
+source_folders = [
+    r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\300to 800 Vs rescords",
+    r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\200to 300",
+    r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\Selected"
+]
+excel_path = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\magnitude of 6 to 7.5\Earthquakes Data.xlsx"
+sheet_name = "Selected EQS"
+destination_root = r"E:\Machine Learning Research\Numerical Analysis\Earthquakes Materials\Grouped_By_Row_Metadata"
+# GrouptoFolder_FromSelectedinExcel(source_folders, excel_path, sheet_name, destination_root)
+
+#===============================================================EQs Segregation to horizontal and vertical components files
+# earthquake_files = EQ_H_V_Segregation(destination_root)
+
+#===============================================================Matching and handling
+
+# print(earthquake_files)
+# for key, value in earthquake_files.items():
+#     print(earthquake_files[key])
+#     file1 = {}
+#     file1[key]  = earthquake_files[key]
+#     DataProcessing(file1)
+
+    # break
+# DataProcessing(earthquake_files)
+
+#===============================================================Earthquakes property computations
+
+
+
+# def filePaths(Subfolders, FileName):
+#     ResultFiles = []
+#     for subfolder in subfolders:
+#         for files in os.listdir(subfolder):
+#             if files.endswith(FileName):
+#                 Filepath = os.path.join(subfolder, files)
+#                 ResultFiles.append(Filepath)
+#
+#     return ResultFiles
+
+folderpath = open_folder_dialog()
+scaled_files = []
+# Walk through the folder recursively
+for root, dirs, files in os.walk(folderpath):
+    for file in files:
+        if file.startswith("_ScaledG"):
+            full_path = os.path.join(root, file)
+            scaled_files.append(full_path)
+
+AT2Directories  = scaled_files
+Parameters = seismic_IM(dirs = AT2Directories)
+UniqueData  = ExtractionOfIMData(Parameters)
+printUniqData(UniqueData)
